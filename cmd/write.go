@@ -15,9 +15,9 @@
 package cmd
 
 import (
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/vinkdong/vy/pkg/vy"
-	"github.com/pkg/errors"
 )
 
 // writeCmd represents the write command
@@ -39,8 +39,8 @@ to quickly create a Cobra application.`,
 			return errors.New("must specify a tag and value")
 		}
 		w := vy.Write{
-			Path: input,
-			Tag: args[0],
+			Path:  input,
+			Tag:   args[0],
 			Value: args[1],
 		}
 		return w.Write()

@@ -1,12 +1,14 @@
 package vy
 
 import (
+	"fmt"
+	"github.com/bitly/go-simplejson"
+	"github.com/pkg/errors"
+	"github.com/vinkdong/gox/log"
 	"io/ioutil"
 	"k8s.io/apimachinery/pkg/util/yaml"
-	"github.com/bitly/go-simplejson"
-	"strings"
 	"os"
-	"github.com/vinkdong/gox/log"
+	"strings"
 )
 
 type Write struct {
@@ -24,6 +26,14 @@ func (w *Write) Write() error {
 	return w.readWrite(data)
 }
 
+// TODO: 标签对应的值 文档中重复会报错
+/*
+;非常简单粗暴的方法
+;通过json找到需要替换的字符串，直接字符串替换
+;可以保留注释
+;功能很多欠缺
+*/
+
 func (w *Write) readWrite(data []byte) error {
 	jsonData, err := yaml.ToJSON(data)
 	if err != nil {
@@ -35,8 +45,27 @@ func (w *Write) readWrite(data []byte) error {
 
 	}
 	tags := strings.Split(w.Tag, ".")
-	value, err := js.GetPath(tags...).String()
+
+	if _, ok := js.CheckGet(tags[0]); !ok {
+		newData := append(data, []byte(fmt.Sprintf("\n%s: %s", w.Tag, w.Value))...)
+		if err := ioutil.WriteFile(w.Path, []byte(newData), w.Mode); err != nil {
+			return err
+		}
+		return nil
+	}
+
+	jsPath := js.GetPath(tags...)
+
+	var value string
+
+	if jsPath.Interface() == nil {
+		return errors.New("cant find request path")
+	} else {
+		value, err = jsPath.String()
+	}
+
 	if err != nil {
+		log.Error(err)
 		return err
 	}
 	orgData := string(data[:])
@@ -46,7 +75,7 @@ func (w *Write) readWrite(data []byte) error {
 		if err := ioutil.WriteFile(w.Path, []byte(newData), w.Mode); err != nil {
 			return err
 		}
-	}else {
+	} else {
 		log.Info("haven't support now for your document...")
 	}
 	return nil
